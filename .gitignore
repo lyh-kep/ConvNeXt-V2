@@ -1,0 +1,4 @@
+eval_results/
+runs/
+weights/
+__pycache__/
