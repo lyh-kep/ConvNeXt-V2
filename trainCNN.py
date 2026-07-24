@@ -1,4 +1,32 @@
-﻿import sys
+﻿# ============================================================
+# 兼容性补丁：setuptools>=81 删除了 pkg_resources
+# 解决 torchmetrics 0.6.0 的 ModuleNotFoundError
+# ============================================================
+import sys as _sys
+try:
+    import pkg_resources  # noqa: F401
+except ImportError:
+    from importlib.metadata import distributions, version as _pkg_version, PackageNotFoundError
+
+    class _MockDistributionNotFound(Exception):
+        pass
+
+    def _mock_get_distribution(name):
+        try:
+            v = _pkg_version(name)
+            class _MockDist:
+                version = v
+            return _MockDist()
+        except PackageNotFoundError:
+            raise _MockDistributionNotFound(f'Package {name} not found')
+
+    import types
+    _fake_pr = types.ModuleType('pkg_resources')
+    _fake_pr.DistributionNotFound = _MockDistributionNotFound
+    _fake_pr.get_distribution = _mock_get_distribution
+    _sys.modules['pkg_resources'] = _fake_pr
+# ============================================================
+import sys
 import time
 import random
 from simplenet_impl3d.simpnet import SimpNet
@@ -235,3 +263,4 @@ for i,(bs,model,name) in enumerate(zip([bs],[model],["SimpleNet"])):
 
  # 0.83783782，所用时间： 4867.77774215
 # 保存最佳模型，原先准确率：0.89189190, 更新后准确率: 0.93243241，所用时间： 887.72589159
+

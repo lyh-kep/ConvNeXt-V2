@@ -13,6 +13,7 @@
 # scikit-learn 1.6.1
 # tqdm 4.66.5
 # tensorboardX  2.6.5
+# setuptools 80.9.0
 ```
 
 ## 安装依赖
