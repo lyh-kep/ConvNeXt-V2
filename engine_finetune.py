@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from timm.data import Mixup
 from timm.utils import ModelEma
 
-from torchmetrics import Accuracy, Precision, Recall, Specificity, F1
+from torchmetrics import Accuracy, Precision, Recall, Specificity, F1Score
 from sklearn.metrics import roc_curve, auc
 
 import utils
@@ -26,7 +26,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler, max_norm: float = 0,
                     model_ema: Optional[ModelEma] = None, mixup_fn: Optional[Mixup] = None,
-                    log_writer=None, args=None, total_epochs=None):
+                    args=None, total_epochs=None):
     model.train(True)
     update_freq = args.update_freq
     use_amp = args.use_amp
@@ -34,11 +34,18 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
     num_classes = getattr(args, 'nb_classes', 2)
 
-    accuracy_metric = Accuracy(num_classes=num_classes).to(device)
-    precision_metric = Precision(num_classes=num_classes, average='macro').to(device)
-    recall_metric = Recall(num_classes=num_classes, average='macro').to(device)
-    f1_metric = F1(num_classes=num_classes, average='macro').to(device)
+    if num_classes ==2:
+        accuracy_metric = Accuracy( task="binary").to(device)
+        precision_metric = Precision( task="binary").to(device)
+        recall_metric = Recall( task="binary").to(device)
+        f1_metric = F1Score( task="binary").to(device)
 
+    else:
+        accuracy_metric = Accuracy( task="multiclass",num_classes=num_classes).to(device)
+        precision_metric = Precision( task="multiclass",num_classes=num_classes, average='macro').to(device)
+        recall_metric = Recall( task="multiclass",num_classes=num_classes, average='macro').to(device)
+        f1_metric = F1Score( task="multiclass",num_classes=num_classes, average='macro').to(device)
+    
     total_correct = 0
     total_samples = 0
     total_loss = 0.0
@@ -196,12 +203,20 @@ def evaluate(data_loader: Iterable, model: torch.nn.Module, device: torch.device
     criterion = torch.nn.CrossEntropyLoss()
 
     model.eval()
+    if num_classes ==2:
+        accuracy_metric = Accuracy( task="binary").to(device)
+        precision_metric = Precision( task="binary").to(device)
+        recall_metric = Recall( task="binary").to(device)
+        f1_metric = F1Score( task="binary").to(device)
+        specificity_metric = Specificity( task="binary").to(device)
 
-    accuracy_metric = Accuracy(num_classes=num_classes).to(device)
-    precision_metric = Precision(num_classes=num_classes, average='macro').to(device)
-    recall_metric = Recall(num_classes=num_classes, average='macro').to(device)
-    f1_metric = F1(num_classes=num_classes, average='macro').to(device)
-    specificity_metric = Specificity(num_classes=num_classes, average='macro').to(device)
+
+    else:
+        accuracy_metric = Accuracy( task="multiclass",num_classes=num_classes).to(device)
+        precision_metric = Precision( task="multiclass", num_classes=num_classes, average='macro').to(device)
+        recall_metric = Recall( task="multiclass",num_classes=num_classes, average='macro').to(device)
+        f1_metric = F1Score( task="multiclass",num_classes=num_classes, average='macro').to(device)
+        specificity_metric = Specificity( task="multiclass",num_classes=num_classes, average='macro').to(device)
 
     total_correct = 0
     total_samples = 0

@@ -468,12 +468,6 @@ def main(args):
         else:
             sampler_val = torch.utils.data.SequentialSampler(dataset_val)
 
-    if global_rank == 0 and args.log_dir is not None:
-        os.makedirs(args.log_dir, exist_ok=True)
-        log_writer = utils.TensorboardLogger(log_dir=args.log_dir)
-    else:
-        log_writer = None
-
     data_loader_train = torch.utils.data.DataLoader(
         dataset_train, sampler=sampler_train,
         batch_size=args.batch_size,
@@ -625,8 +619,6 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             data_loader_train.sampler.set_epoch(epoch)
-        if log_writer is not None:
-            log_writer.set_step(epoch * num_training_steps_per_epoch * args.update_freq)
 
         print(f"\n{'='*60}")
         print(f"Epoch {epoch + 1}/{args.epochs}")
@@ -636,7 +628,6 @@ def main(args):
             model, criterion, data_loader_train,
             optimizer, device, epoch, loss_scaler,
             args.clip_grad, model_ema, mixup_fn,
-            log_writer=log_writer,
             args=args,
             total_epochs=args.epochs
         )
@@ -672,10 +663,6 @@ def main(args):
             if not improved:
                 print(f'Max accuracy: {max_accuracy:.2f}% (no improvement)')
 
-            if log_writer is not None:
-                log_writer.update(test_acc=test_stats['acc'], head="perf", step=epoch)
-                log_writer.update(test_loss=test_stats['loss'], head="perf", step=epoch)
-
             log_stats.update({**{f'test_{k}': v for k, v in test_stats.items()}})
 
             if args.model_ema and args.model_ema_eval:
@@ -695,8 +682,6 @@ def main(args):
                             loss_scaler=loss_scaler, epoch="best-ema", model_ema=model_ema)
                 else:
                     print(f'Max EMA accuracy: {max_accuracy_ema:.2f}% (no improvement)')
-                if log_writer is not None:
-                    log_writer.update(test_acc_ema=test_stats_ema['acc'], head="perf", step=epoch)
                 log_stats.update({**{f'test_{k}_ema': v for k, v in test_stats_ema.items()}})
 
             if args.early_stopping:
@@ -731,8 +716,6 @@ def main(args):
 
         if args.output_dir and utils.is_main_process():
             os.makedirs(args.output_dir, exist_ok=True)
-            if log_writer is not None:
-                log_writer.flush()
             with open(os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
                 f.write(json.dumps(log_stats) + "\n")
 

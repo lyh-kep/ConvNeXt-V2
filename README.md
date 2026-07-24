@@ -9,10 +9,10 @@
 # PyTorch 1.8.1+cu111
 # torchvision 0.9.1+cu111
 # timm 0.3.2
+# torchmetrics 0.11.4
 # matplotlib 3.10.3
 # scikit-learn 1.6.1
 # tqdm 4.66.5
-# tensorboardX  2.6.5
 # setuptools 80.9.0
 ```
 
