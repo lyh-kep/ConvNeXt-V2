@@ -15,6 +15,45 @@ from pathlib import Path
 import sys
 
 import torch
+
+
+class StdoutTee:
+    def __init__(self, stdout, log_file):
+        self.stdout = stdout
+        self.log_file = log_file
+        self._buffer = ''
+
+    def write(self, message):
+        self.stdout.write(message)
+        self.stdout.flush()
+
+        if '\r' in message:
+            parts = message.split('\r')
+            self._buffer = parts[-1]
+            if len(parts) > 1:
+                for part in parts[:-1]:
+                    if part.strip():
+                        self.log_file.write(part + '\n')
+        else:
+            if self._buffer:
+                self.log_file.write(self._buffer + message)
+                self._buffer = ''
+            else:
+                self.log_file.write(message)
+            self.log_file.flush()
+
+    def flush(self):
+        self.stdout.flush()
+        self.log_file.flush()
+
+    def close(self):
+        if self._buffer:
+            self.log_file.write(self._buffer + '\n')
+            self._buffer = ''
+        self.log_file.flush()
+        self.log_file.close()
+
+
 import torch.backends.cudnn as cudnn
 import torchvision
 
@@ -40,7 +79,7 @@ def get_args_parser():
                         help='训练数据集路径，目录下包含类别子目录')
     parser.add_argument('--eval_data_path', default='dataset/val', type=str,
                         help='验证数据集路径，默认使用data_path下的val目录')
-    parser.add_argument('--nb_classes', default=4, type=int,
+    parser.add_argument('--nb_classes', default=2, type=int,
                         help='类别数量，二分类设为2')
     parser.add_argument('--data_set', default='image_folder', choices=['CIFAR', 'IMNET', 'image_folder'], type=str,
                         help='数据集类型，image_folder表示按文件夹组织的图片')
@@ -53,9 +92,9 @@ def get_args_parser():
     parser.add_argument('--finetune', default='weights/convnextv2_atto_1k_224_fcmae.pt', type=str,
                         help='预训练权重路径')
 
-    parser.add_argument('--batch_size', default=2, type=int,
+    parser.add_argument('--batch_size', default=8, type=int,
                         help='批大小')
-    parser.add_argument('--epochs', default=20, type=int,
+    parser.add_argument('--epochs', default=500, type=int,
                         help='训练轮数')
     parser.add_argument('--blr', type=float, default=2e-4,
                         help='基础学习率 (batch_size=256时的学习率)')
@@ -117,14 +156,13 @@ def get_args_parser():
     parser.add_argument('--model_key', default='model|module', type=str)
     parser.add_argument('--model_prefix', default='', type=str)
 
-    parser.add_argument('--log_dir', default=None)
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--resume', default='', type=str)
 
     parser.add_argument('--imagenet_default_mean_and_std', type=str2bool, default=True)
     parser.add_argument('--auto_resume', type=str2bool, default=True)
     parser.add_argument('--save_ckpt', type=str2bool, default=True)
-    parser.add_argument('--save_ckpt_freq', default=10, type=int)
+    parser.add_argument('--save_ckpt_freq', default=20, type=int)
     parser.add_argument('--save_ckpt_num', default=3, type=int)
 
     parser.add_argument('--start_epoch', default=0, type=int)
@@ -142,7 +180,7 @@ def get_args_parser():
 
     parser.add_argument('--early_stopping', type=str2bool, default=True,
                         help='是否启用早停机制')
-    parser.add_argument('--early_stopping_patience', type=int, default=10,
+    parser.add_argument('--early_stopping_patience', type=int, default=50,
                         help='早停耐心值：验证指标多少个epoch不提升则停止')
     parser.add_argument('--early_stopping_min_delta', type=float, default=0.001,
                         help='早停最小提升幅度，超过该值才算提升')
@@ -400,9 +438,6 @@ def plot_results(output_dir, history, num_classes=2):
 def main(args):
     utils.init_distributed_mode(args)
 
-    if args.log_dir is None:
-        args.log_dir = args.output_dir
-
     device = torch.device(args.device)
 
     seed = args.seed + utils.get_rank()
@@ -594,6 +629,19 @@ def main(args):
     os.makedirs(args.output_dir, exist_ok=True)
     print(f"Output directory: {args.output_dir}")
 
+    if hasattr(args, '_train_classes') and args._train_classes is not None:
+        class_info = {
+            'classes': args._train_classes,
+            'class_to_idx': args._train_class_to_idx
+        }
+        classes_json_path = os.path.join(args.output_dir, 'classes.json')
+        with open(classes_json_path, 'w', encoding='utf-8') as f:
+            json.dump(class_info, f, ensure_ascii=False, indent=2)
+        print(f"Class mapping saved to: {classes_json_path}")
+
+    log_file = open(os.path.join(args.output_dir, 'log.txt'), 'w', encoding='utf-8')
+    sys.stdout = StdoutTee(sys.__stdout__, log_file)
+
     utils.auto_load_model(
         args=args, model=model, model_without_ddp=model_without_ddp,
         optimizer=optimizer, loss_scaler=loss_scaler, model_ema=model_ema)
@@ -714,11 +762,6 @@ def main(args):
 
         training_history.append(log_stats)
 
-        if args.output_dir and utils.is_main_process():
-            os.makedirs(args.output_dir, exist_ok=True)
-            with open(os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
-                f.write(json.dumps(log_stats) + "\n")
-
         if args.output_dir:
             os.makedirs(args.output_dir, exist_ok=True)
             save_results_csv(args.output_dir, training_history)
@@ -732,6 +775,9 @@ def main(args):
     if args.model_ema and args.model_ema_eval:
         print(f'Max EMA accuracy: {max_accuracy_ema:.2f}%')
     print(f'{"="*60}')
+
+    sys.stdout.close()
+    sys.stdout = sys.__stdout__
 
 
 if __name__ == '__main__':

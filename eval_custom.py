@@ -1,4 +1,4 @@
-﻿import os
+import os
 os.environ.setdefault('KMP_DUPLICATE_LIB_OK', 'TRUE')
 
 import warnings
@@ -7,6 +7,7 @@ warnings.filterwarnings('ignore', message='Default upsampling behavior')
 
 import argparse
 import csv
+import json
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -24,7 +25,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 import models.convnextv2 as convnextv2
-from utils import remap_checkpoint_keys, load_state_dict
+from utils import remap_checkpoint_keys, load_state_dict, str2bool
 
 def get_args_parser():
     parser = argparse.ArgumentParser('ConvNeXt V2 Evaluation', add_help=False)
@@ -34,6 +35,8 @@ def get_args_parser():
     parser.add_argument('--data_path', default='dataset/val', type=str, help='Validation data path (folder with class subfolders)')
     parser.add_argument('--nb_classes', default=2, type=int)
     parser.add_argument('--class_names', default='cat,dog', type=str, help='Comma-separated class names')
+    parser.add_argument('--auto_class_names', type=str2bool, default=True,
+                        help='Automatically load class names from classes.json in checkpoint directory')
     parser.add_argument('--output_dir', default='eval_results', type=str)
     parser.add_argument('--batch_size', default=8, type=int)
     parser.add_argument('--threshold', default=0.5, type=float)
@@ -73,7 +76,27 @@ def load_model(args):
 
     model.to(device)
     model.eval()
+
     return model, device
+
+def load_class_names(args):
+    if not args.auto_class_names:
+        return args.class_names.split(',')
+
+    checkpoint_dir = os.path.dirname(args.checkpoint)
+    classes_json_path = os.path.join(checkpoint_dir, 'classes.json')
+
+    if os.path.exists(classes_json_path):
+        with open(classes_json_path, 'r', encoding='utf-8') as f:
+            class_info = json.load(f)
+        print(f"Loaded class names from: {classes_json_path}")
+        print(f"Classes: {class_info['classes']}")
+        args._train_classes = class_info['classes']
+        args._train_class_to_idx = class_info['class_to_idx']
+        return class_info['classes']
+    else:
+        print(f"Warning: classes.json not found in {checkpoint_dir}, using --class_names argument")
+        return args.class_names.split(',')
 
 def get_transform(args):
     return transforms.Compose([
@@ -85,10 +108,15 @@ def get_transform(args):
 
 def load_data(args):
     img_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']
-    class_names = args.class_names.split(',')
-    if len(class_names) != args.nb_classes:
-        class_names = sorted([d for d in os.listdir(args.data_path) if os.path.isdir(os.path.join(args.data_path, d))])
+
+    if hasattr(args, '_train_classes') and args._train_classes is not None:
+        class_names = args._train_classes
         args.nb_classes = len(class_names)
+    else:
+        class_names = args.class_names.split(',')
+        if len(class_names) != args.nb_classes:
+            class_names = sorted([d for d in os.listdir(args.data_path) if os.path.isdir(os.path.join(args.data_path, d))])
+            args.nb_classes = len(class_names)
 
     img_paths = []
     labels = []
@@ -223,13 +251,36 @@ def save_metrics_to_csv(metrics, class_names, output_path):
         writer.writeheader()
         writer.writerows(rows)
 
+def save_predictions_csv(img_paths, labels, preds, probs, class_names, output_path):
+    rows = []
+    for i in range(len(img_paths)):
+        true_label = class_names[labels[i]] if labels[i] < len(class_names) else str(labels[i])
+        predicted_label = class_names[preds[i]] if preds[i] < len(class_names) else str(preds[i])
+        is_correct = int(labels[i] == preds[i])
+        confidence = float(probs[i][preds[i]]) if len(probs[i]) > preds[i] else 0.0
+
+        rows.append({
+            'image_path': img_paths[i],
+            'true_label': true_label,
+            'predicted_label': predicted_label,
+            'is_correct': is_correct,
+            'confidence': confidence
+        })
+
+    with open(output_path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=['image_path', 'true_label', 'predicted_label', 'is_correct', 'confidence'])
+        writer.writeheader()
+        writer.writerows(rows)
+
 def main(args):
     os.makedirs(args.output_dir, exist_ok=True)
 
-    class_names = args.class_names.split(',')
-
     print(f"Loading model: {args.model}")
     model, device = load_model(args)
+
+    class_names = load_class_names(args)
+    args.class_names = ','.join(class_names)
+    args.nb_classes = len(class_names)
 
     print(f"Loading data from: {args.data_path}")
     img_paths, labels, class_names = load_data(args)
@@ -282,6 +333,9 @@ def main(args):
 
     save_metrics_to_csv(metrics, class_names,
                         os.path.join(args.output_dir, 'metrics.csv'))
+
+    save_predictions_csv(img_paths, labels, preds, probs, class_names,
+                         os.path.join(args.output_dir, 'predictions.csv'))
 
     with open(os.path.join(args.output_dir, 'report.txt'), 'w', encoding='utf-8') as f:
         f.write("=" * 60 + "\n")
