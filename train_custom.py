@@ -123,7 +123,7 @@ def get_args_parser():
 
     parser.add_argument('--imagenet_default_mean_and_std', type=str2bool, default=True)
     parser.add_argument('--auto_resume', type=str2bool, default=True)
-    parser.add_argument('--save_ckpt', type=str2bool, default=False)
+    parser.add_argument('--save_ckpt', type=str2bool, default=True)
     parser.add_argument('--save_ckpt_freq', default=10, type=int)
     parser.add_argument('--save_ckpt_num', default=3, type=int)
 
