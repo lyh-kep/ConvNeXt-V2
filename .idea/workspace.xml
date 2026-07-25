@@ -2,9 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9bd28e70-ca4d-49e4-9b98-fe7ead9ccb84" name="更改" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eval_custom.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval_custom.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/engine_finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/engine_finetune.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train_custom.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_custom.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -39,7 +38,7 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
-  <component name="RunManager" selected="Python.eval_custom">
+  <component name="RunManager" selected="Python.train_custom">
     <configuration name="eval_custom" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="ConvNeXt-V2" />
       <option name="ENV_FILES" value="" />
@@ -117,8 +116,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.eval_custom" />
         <item itemvalue="Python.train_custom" />
+        <item itemvalue="Python.eval_custom" />
         <item itemvalue="Python.inference" />
       </list>
     </recent_temporary>
@@ -138,7 +137,7 @@
       <option name="presentableId" value="Default" />
       <updated>1784858509971</updated>
       <workItem from="1784858511141" duration="4570000" />
-      <workItem from="1784863375734" duration="14222000" />
+      <workItem from="1784863375734" duration="15933000" />
     </task>
     <servers />
   </component>
@@ -146,8 +145,8 @@
     <option name="version" value="3" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/ConvNeXt_V2$train_custom.coverage" NAME="train_custom 覆盖结果" MODIFIED="1784960329791" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ConvNeXt_V2$eval_custom.coverage" NAME="eval_custom 覆盖结果" MODIFIED="1784960566095" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ConvNeXt_V2$train_custom.coverage" NAME="train_custom 覆盖结果" MODIFIED="1784965721562" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ConvNeXt_V2$inference.coverage" NAME="inference 覆盖结果" MODIFIED="1784876825622" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

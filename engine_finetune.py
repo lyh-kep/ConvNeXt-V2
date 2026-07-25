@@ -1,4 +1,4 @@
-﻿import math
+import math
 import sys
 from typing import Iterable, Optional
 import numpy as np
@@ -199,7 +199,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
 
 @torch.no_grad()
-def evaluate(data_loader: Iterable, model: torch.nn.Module, device: torch.device, use_amp=False, num_classes=2, epoch=None, total_epochs=None):
+def evaluate(data_loader: Iterable, model: torch.nn.Module, device: torch.device, use_amp=False, num_classes=2, epoch=None, total_epochs=None, is_ema=False):
     criterion = torch.nn.CrossEntropyLoss()
 
     model.eval()
@@ -226,12 +226,14 @@ def evaluate(data_loader: Iterable, model: torch.nn.Module, device: torch.device
     all_targets = []
     all_probs = []
 
+    model_prefix = 'EMA ' if is_ema else ''
+
     if HAS_TQDM:
         if epoch is not None and total_epochs is not None:
             desc_prefix = f'[{epoch+1}/{total_epochs}] '
         else:
             desc_prefix = ''
-        process_bar = tqdm(data_loader, file=sys.stdout, desc=desc_prefix + 'Val Initializing...')
+        process_bar = tqdm(data_loader, file=sys.stdout, desc=desc_prefix + f'{model_prefix}Val Initializing...')
     else:
         process_bar = data_loader
 
@@ -283,7 +285,7 @@ def evaluate(data_loader: Iterable, model: torch.nn.Module, device: torch.device
 
         if HAS_TQDM:
             process_bar.set_description(
-                f'{desc_prefix}ValAcc: {cur_acc:.4f} | ValLoss: {cur_loss:.4f} | '
+                f'{desc_prefix}{model_prefix}ValAcc: {cur_acc:.4f} | {model_prefix}ValLoss: {cur_loss:.4f} | '
                 f'Recall: {cur_rec:.4f} | Spe: {cur_spe:.4f} | Pre: {cur_pre:.4f} | F1: {cur_f1:.4f}'
             )
 
@@ -302,7 +304,7 @@ def evaluate(data_loader: Iterable, model: torch.nn.Module, device: torch.device
     if n_steps == 0:
         print(f'  [WARN] val dataloader produced 0 batches! Check --eval_data_path / --data_path.')
 
-    print(f'  Val   -> Acc: {acc1_percent:.2f}% | Loss: {avg_loss:.4f} | '
+    print(f'  {model_prefix}Val -> Acc: {acc1_percent:.2f}% | Loss: {avg_loss:.4f} | '
           f'P: {precision:.4f} | R: {recall:.4f} | F1: {f1:.4f} | Spe: {specificity:.4f} | Samples: {total_samples}')
 
     result = {

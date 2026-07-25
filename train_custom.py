@@ -715,7 +715,7 @@ def main(args):
 
             if args.model_ema and args.model_ema_eval:
                 test_stats_ema = evaluate(data_loader_val, model_ema.ema, device, use_amp=args.use_amp,
-                                           num_classes=args.nb_classes, epoch=epoch, total_epochs=args.epochs)
+                                           num_classes=args.nb_classes, epoch=epoch, total_epochs=args.epochs, is_ema=True)
                 if max_accuracy_ema < test_stats_ema["acc"]:
                     old_acc_ema = max_accuracy_ema
                     max_accuracy_ema = test_stats_ema["acc"]
